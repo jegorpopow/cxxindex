@@ -1,18 +1,13 @@
-module QueryParser.Parser where 
+module QueryParser.Parser (parseCQuery) where
 
-import Model.Query
-import Model.CType
-import QueryParser.Lexer
-import Control.Applicative (some, asum)
 import Data.Functor (($>))
-import Data.Set qualified as Set
+import Model.CType
+import Model.Query
+import QueryParser.Lexer
 import Text.Parsec
 import Text.Parsec.Pos
-import Text.Parsec.Expr
--- import MetaUtils
 
 type QParser a = Parsec [QToken] () a
-
 
 -- | Парсер одного токена, рассматривает отдельные символы.
 type QTokenParser a = Parsec QToken () a
@@ -34,7 +29,6 @@ parseToken p = do
   source <- sourceName <$> getPosition
   tokSatMap $ either (const Nothing) Just . parse p source
 
-
 tok :: QToken -> QParser QToken
 tok t = tokSat (== t)
 
@@ -45,38 +39,53 @@ inAngles :: QParser a -> QParser a
 inAngles = between (tok "<") (tok ">")
 
 parseCKind :: QParser CKind
-parseCKind = (tok "Type" *> pure CKType) <|> (tok "Value" *> pure CKValue)
+parseCKind = tok "Type" $> CKType <|> tok "Value" $> CKValue
 
 parseIdentifier :: QTokenParser Char -> QParser String
 parseIdentifier initial = parseToken $ (:) <$> initial <*> many (alphaNum <|> char '_')
 
 parseName :: QParser String
-parseName = parseIdentifier (lower <|> upper <|> char '_')
+parseName = parseIdentifier (lower <|> upper <|> char '_' <|> char ':')
 
 parseCVar :: QParser CVar
-parseCVar = parseName 
-
-parseCName :: QParser CName
-parseCName = parseName
+parseCVar = parseName
 
 parseKindAnnotation :: QParser (CVar, CKind)
-parseKindAnnotation = inAngles $ do 
+parseKindAnnotation = inAngles $ do
   var <- parseCVar
   _ <- tok ":"
   kind <- parseCKind
   return (var, kind)
 
 parseKindAnnotations :: QParser [(CVar, CKind)]
-parseKindAnnotations = (tok "forall" *> many parseKindAnnotation) <|> pure []
+parseKindAnnotations = tok "forall" *> many parseKindAnnotation <|> pure []
 
-parseCType :: QParser CType
-parseCType = CTVar <$> parseCVar 
-   <|> CTName <$> parseCName
+parseCType :: QParser CType -> QParser CType
+parseCType atom = do
+  pre_modifiers <- parsePreModifiers
+  atom_type <- atom
+  post_modifiers <- parsePostModifiers
+  let premodified = foldr (\modifier acc -> modifier acc) atom_type pre_modifiers
+  return $ foldl (\acc modifier -> modifier acc) premodified post_modifiers
+  where
+    parseTemplateArgs = flip CTApplication <$> inAngles (sepBy (CTAType <$> parseCType atom) (tok ","))
+    parsePointer = tok "*" $> CTPointer
+    parsePostModifiers :: QParser [CType -> CType]
+    parsePostModifiers = many (parseTemplateArgs <|> parsePointer)
+    parseConst = tok "const" $> CTConst
+    parseVolatile = tok "volatile" $> CTVolatile
+    parsePreModifiers :: QParser [CType -> CType]
+    parsePreModifiers = many (parseConst <|> parseVolatile)
+
+atomParser :: [CVar] -> QParser CType
+atomParser vars_names = process <$> parseName
+  where
+    process name = if name `elem` vars_names then CTVar name else CTName name
 
 parseCQuery :: QParser CQuery
-parseCQuery = do 
+parseCQuery = do
   template_args <- parseKindAnnotations
-  args <- inParens (sepBy parseCType $ tok ",")
+  let vars_names = fst <$> template_args
+  args <- inParens (sepBy (parseCType $ atomParser vars_names) $ tok ",")
   _ <- tok "->"
-  ret_type <- parseCType
-  return $ CQuery $ CDeclType template_args (Set.fromList args) ret_type
+  CQuery . CDeclType template_args args <$> parseCType (atomParser vars_names)
