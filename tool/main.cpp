@@ -4,6 +4,7 @@
 #include <clang/AST/DeclBase.h>
 #include <clang/AST/DeclTemplate.h>
 #include <clang/AST/RecursiveASTVisitor.h>
+#include <clang/AST/Type.h>
 #include <clang/Basic/SourceLocation.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/Frontend/CompilerInstance.h>
@@ -116,15 +117,14 @@ struct ast_visitor:
       std::println(
 R"(CDecl {{
   name = {},
-  ctype = CDeclType {{ template_args = [], arguments = [], result = {} }},
-  arguments = fromList {},
+  ctype = CDeclType {{ template_args = [], arguments = {}, result = {} }},
   location = {},
 }})",
         hs::quoted_string_view(f->getQualifiedNameAsString()),
-        hs::type(f->getReturnType()),
         iota(0, int(f->getNumParams())) | transform([&](int i) {
-          return hs::type(f->getParamDecl(i)->getType());
+          return hs::type(f->getParamDecl(i)->getType().getCanonicalType());
         }),
+        hs::type(f->getReturnType().getCanonicalType()),
         hs::quoted_string_view(f->getLocation().printToString(compiler.getSourceManager())));
     }
     return base_visitor::TraverseFunctionDecl(f);
