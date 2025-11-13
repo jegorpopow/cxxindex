@@ -1,17 +1,3 @@
-RAII: resource acquisition is initialization
-Plmpl: Pointer to implementation
-EBCO: Empty Base Class Optimization
-PVC: Pure Virtual Call
-NVI: Non Virtual Interface
-RTTI: Runtime Type Information
-AAA: always almost auto
-AAARR: always almost auto ref ref
-SFINAE: Substitution Failure Is Not An Error
-ADL: Argument Dependent Lookup
-
-
-
-
 name:                backend
 version:             0.1.0.0
 github:              "jegorpopow/backend"
