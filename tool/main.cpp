@@ -116,7 +116,7 @@ struct ast_visitor:
       std::println(
 R"(CDecl {{
   name = {},
-  ctype = {},
+  ctype = CDeclType {{ template_args = [], arguments = [], result = {} }},
   arguments = fromList {},
   location = {},
 }})",

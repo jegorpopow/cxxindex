@@ -1,1 +1,3 @@
-#include <vector> // IWYU pragma: keep
+// IWYU pragma: begin_keep
+#include <vector>
+#include <cstdio>
