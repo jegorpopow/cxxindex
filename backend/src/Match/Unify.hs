@@ -82,5 +82,5 @@ unify q@CQuery {target = CDeclType {template_args, arguments, result}} d@CDecl {
     getFirst (h@(Just _) : _) = h
     getFirst (Nothing : rest) = getFirst rest
 
--- search :: CQuery -> CIndex -> [CMatch]
--- search query = Data.Maybe.mapMaybe (unify query)
+search :: CQuery -> CIndex -> [CMatch]
+search query = Data.Maybe.mapMaybe (unify query) 
