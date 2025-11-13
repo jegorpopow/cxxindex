@@ -1,2 +1,11 @@
+import Model.CType
+import Model.Query 
+
+import Match.Unify
+
+-- c_maxl :: CDecl {name = "maxl", ctype = CDeclType(template )}
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = do 
+    putStrLn ""
+    print "meow"
