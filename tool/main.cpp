@@ -18,101 +18,128 @@
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
 #include <print>
+#include <ranges>
 
-using namespace clang;
-using namespace clang::tooling;
+namespace hs {
 
 struct quoted_string_view: std::string_view {};
 
-struct type_decl {
-  TypeDecl t;
+struct type: clang::QualType {
+  using clang::QualType::QualType, clang::QualType::operator=;
+  type(clang::QualType t): clang::QualType(t) {}
 };
 
-struct function_decl {
-  quoted_string_view name;
-  std::vector<quoted_string_view> arg_types;
-  quoted_string_view return_type;
-};
+} // namespace hs
 
 struct null_format_parser {
-  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  constexpr static auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
 };
 
 template<>
-struct std::formatter<quoted_string_view>: null_format_parser {
-  constexpr auto format(quoted_string_view& t, format_context& ctx) {
-    return format_to(ctx.out(), "\"{}\"", string_view(t));
+struct std::formatter<hs::quoted_string_view>: null_format_parser {
+  static auto format(hs::quoted_string_view t, auto& ctx) {
+    auto put = [&](char c) { *ctx.out()++ = c; };
+    put('"');
+    for (char c: t) {
+      if (c == '\\' || c == '"') { put('\\'); }
+      put(c);
+    }
+    put('"');
+    return ctx.out();
   }
 };
 
 template<>
-struct std::formatter<function_decl>: null_format_parser {
-  constexpr auto format(function_decl& f, format_context& ctx) {
-    return format_to(ctx.out(),
-R"(CDecl {{
-  name = {},
-  ctype = CDeclType {{
-    template_args = [],
-    arguments = fromList [ {} ],
-    result = CTName {}
-  }}
-}})",
-      f.name, 0, f.return_type
-    );
+struct std::formatter<hs::type>: null_format_parser {
+  static auto format(hs::type t, auto& ctx) {
+    if (t->isLValueReferenceType()) { format_to(ctx.out(), "CTLRef "); }
+    if (t->isRValueReferenceType()) { format_to(ctx.out(), "CTRRef "); }
+    t = t.getNonReferenceType();
+
+  peel:
+    if (t.isLocalConstQualified()) { format_to(ctx.out(), "CTConst "); }
+    if (t.isLocalVolatileQualified()) { format_to(ctx.out(), "CTVolatile "); }
+    t.removeLocalFastQualifiers();
+
+    if (t->isPointerType()) {
+      format_to(ctx.out(), "CTPointer ");
+      t = t->getPointeeType();
+      goto peel;
+    }
+
+    // Don't handle template type applications, just pass them as qualified name
+    return format_to(ctx.out(), "CTName {}",
+      hs::quoted_string_view(t.getAsString()));
   }
 };
 
+template<typename Range>
+  requires requires (Range range) {
+    { *std::begin(range) } -> std::formattable<char>;
+  }
+struct std::formatter<Range>: null_format_parser {
+  static auto format(const Range& range, format_context& ctx) {
+    auto put = [&](char c) { *ctx.out()++ = c; };
+    bool first = true;
+    put('[');
+    for (auto&& elem: range) {
+      if (!first) {
+        put(',');
+        put(' ');
+      } else {
+        first = false;
+      }
+      format_to(ctx.out(), "{}", elem);
+    }
+    put(']');
+    return ctx.out();
+  }
+};
 
 struct ast_visitor:
-  RecursiveASTVisitor<ast_visitor>,
-  ASTConsumer
+  clang::RecursiveASTVisitor<ast_visitor>,
+  clang::ASTConsumer
 {
   using base_visitor = RecursiveASTVisitor<ast_visitor>;
 
-  CompilerInstance& compiler;
+  clang::CompilerInstance& compiler;
 
-  explicit ast_visitor(CompilerInstance& compiler): compiler(compiler) {}
+  explicit ast_visitor(clang::CompilerInstance& compiler): compiler(compiler) {}
 
-  void HandleTranslationUnit(ASTContext& c) override {
+  void HandleTranslationUnit(clang::ASTContext& c) override {
     TraverseDecl(c.getTranslationUnitDecl());
   }
 
-  bool TraverseFunctionDecl(FunctionDecl* f) {
+  bool TraverseFunctionDecl(clang::FunctionDecl* f) {
     if (f->isFirstDecl() && !f->isDependentContext()) {
-      std::print("{} {}(",
-        f->getReturnType().getAsString(),
-        f->getQualifiedNameAsString());
-      unsigned n_params = f->getNumParams();
-      for (unsigned i = 0; i < n_params; ++i) {
-        std::print("{}{}",
-          i ? ", " : "",
-          f->getParamDecl(i)->getType().getAsString());
-      }
-      std::println(")");
-
-      {
-        /*
-        CDecl {
-          name = "foo",
-          ctype = CDeclType {template_args = [("T",CKType)],
-          arguments = fromList [CTVar "T"], result = CTName "int"}, location =
-          "here"
-        }
-        */
-      }
+      using namespace std::views;
+      std::println(
+R"(CDecl {{
+  name = {},
+  ctype = {},
+  arguments = fromList {},
+  location = {},
+}})",
+        hs::quoted_string_view(f->getQualifiedNameAsString()),
+        hs::type(f->getReturnType()),
+        iota(0, int(f->getNumParams())) | transform([&](int i) {
+          return hs::type(f->getParamDecl(i)->getType());
+        }),
+        hs::quoted_string_view(f->getLocation().printToString(compiler.getSourceManager())));
     }
     return base_visitor::TraverseFunctionDecl(f);
   }
 };
 
-struct action: ASTFrontendAction {
-  std::unique_ptr<ASTConsumer>
-  CreateASTConsumer(CompilerInstance& compiler, llvm::StringRef) override {
+struct action: clang::ASTFrontendAction {
+  std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance& compiler, llvm::StringRef) override {
     return std::make_unique<ast_visitor>(compiler);
   }
 };
 
 int main(int argc, const char** argv) {
+  using namespace clang::tooling;
   auto parser = CommonOptionsParser::create(argc, argv, llvm::cl::getGeneralCategory());
   if (!parser) {
     llvm::errs() << parser.takeError();

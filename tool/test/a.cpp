@@ -14,4 +14,4 @@ auto x() {
   else { return float(); }
 }
 
-auto z() { return 0; }
+auto z() { return s<0>(); }
