@@ -21,7 +21,7 @@ stack run
 stack run .cxxindex # searches in index file
 ```
 
-Query language description: 
+## Query language description: 
 
 Query consists of function arguments types specification and return type specification. Argument types should be presented as a comma-seprated list in parentheses.
 Return type shoudle be highlighted with  `->`. 
