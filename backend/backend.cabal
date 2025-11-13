@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Match.Unify
       Model.CType
       Model.Query
       QueryParser.Lexer
