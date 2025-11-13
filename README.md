@@ -23,7 +23,7 @@ stack run .cxxindex # searches in index file
 
 Query language description: 
 
-Query consisits of function arguments types specification and return type specification. Argument types should be presented as a comma-seprated list in parentheses.
+Query consists of function arguments types specification and return type specification. Argument types should be presented as a comma-seprated list in parentheses.
 Return type shoudle be highlighted with  `->`. 
 
 Optionally, `forall` section with list of template parameters may prior the main part of a query. 
