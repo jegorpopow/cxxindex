@@ -53,24 +53,31 @@ struct std::formatter<hs::quoted_string_view>: null_format_parser {
 template<>
 struct std::formatter<hs::type>: null_format_parser {
   static auto format(hs::type t, auto& ctx) {
-    if (t->isLValueReferenceType()) { format_to(ctx.out(), "CTLRef "); }
-    if (t->isRValueReferenceType()) { format_to(ctx.out(), "CTRRef "); }
+    int parens = 0;
+    auto wrap = [&](std::string_view s) {
+      ++parens;
+      format_to(ctx.out(), "{} (", s);
+    };
+
+    if (t->isLValueReferenceType()) { wrap("CTLRef"); }
+    if (t->isRValueReferenceType()) { wrap("CTRRef"); }
     t = t.getNonReferenceType();
 
   peel:
-    if (t.isLocalConstQualified()) { format_to(ctx.out(), "CTConst "); }
-    if (t.isLocalVolatileQualified()) { format_to(ctx.out(), "CTVolatile "); }
+    if (t.isLocalConstQualified()) { wrap("CTConst"); }
+    if (t.isLocalVolatileQualified()) { wrap("CTVolatile"); }
     t.removeLocalFastQualifiers();
 
     if (t->isPointerType()) {
-      format_to(ctx.out(), "CTPointer ");
+      wrap("CTPointer");
       t = t->getPointeeType();
       goto peel;
     }
 
     // Don't handle template type applications, just pass them as qualified name
-    return format_to(ctx.out(), "CTName {}",
-      hs::quoted_string_view(t.getAsString()));
+    format_to(ctx.out(), "CTName {}", hs::quoted_string_view(t.getAsString()));
+    while (parens-- > 0) { *ctx.out()++ = ')'; }
+    return ctx.out();
   }
 };
 
@@ -115,11 +122,13 @@ struct ast_visitor:
     if (f->isFirstDecl() && !f->isDependentContext()) {
       using namespace std::views;
       std::println(
-R"(CDecl {{
-  name = {},
-  ctype = CDeclType {{ template_args = [], arguments = {}, result = {} }},
-  location = {},
-}})",
+      "CDecl {{"
+        "name = {},"
+        "ctype = CDeclType {{"
+          "template_args = [], arguments = {}, result = {}"
+        "}},"
+        "location = {}"
+      "}}",
         hs::quoted_string_view(f->getQualifiedNameAsString()),
         iota(0, int(f->getNumParams())) | transform([&](int i) {
           return hs::type(f->getParamDecl(i)->getType().getCanonicalType());
