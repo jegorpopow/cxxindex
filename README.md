@@ -28,7 +28,7 @@ Return type shoudle be highlighted with  `->`.
 
 Optionally, `forall` section with list of template parameters may prior the main part of a query. 
 
-```
+```Rust
 (int, std::vector<int>) -> bool
 forall <T : Type> (T, std::size_t) -> std::vector<T>
 ```
