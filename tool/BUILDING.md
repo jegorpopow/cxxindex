@@ -17,7 +17,6 @@ $ cmake \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
   -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCLANG_DEFAULT_CXX_STDLIB=libc++ \
   -DLLVM_ENABLE_ASSERTIONS=OFF \
   -DLLVM_USE_LINKER=lld \
   -DLLVM_TARGETS_TO_BUILD=X86 \
@@ -46,5 +45,5 @@ $ export Clang_DIR="<LLVM_INSTALL_DIR>/lib/cmake/clang"
 $ cmake --preset default
 $ cmake --build build --config Debug # для Debug-конфигурации тулы
 #    или
-$ cmake --build build --config Debug # для Release-конфигурации
+$ cmake --build build --config Release # для Release-конфигурации
 ```

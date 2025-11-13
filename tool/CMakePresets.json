@@ -11,8 +11,10 @@
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
+        "LLVM_DIR": "$env{LLVM_ROOT}/lib/cmake/llvm",
+        "Clang_DIR": "$env{LLVM_ROOT}/lib/cmake/clang",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_CXX_FLAGS": "-Wall -Wextra"
       }
     }

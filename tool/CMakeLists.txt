@@ -13,8 +13,7 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 target_compile_definitions(tool PRIVATE ${LLVM_DEFINITIONS_LIST})
 
 llvm_map_components_to_libnames(llvm_libs support core irreader frontendOpenMP)
-
 target_link_libraries(tool PRIVATE
   ${llvm_libs}
-  clangBasic clangFrontend clangTooling clangSerialization
+  clangBasic clangFrontend clangTooling clangSerialization clangSema
   clangASTMatchers clangAST)
