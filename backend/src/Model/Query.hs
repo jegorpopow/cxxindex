@@ -28,9 +28,9 @@ prettyCTemplateArg (CVAValue v) = show v
 
 prettyPrint :: CMatch -> String
 prettyPrint (CMatch _ matchedDecl _) = 
-    loc ++ ": " ++ argsStr ++ " -> " ++ resStr
+    name ++ "\t@\t" ++ loc ++ " : " ++ argsStr ++ " -> " ++ resStr
     where
-        CDecl {ctype = CDeclType { arguments = args, result = res}
+        CDecl {name, ctype = CDeclType { arguments = args, result = res}
         , location = loc
         } = matchedDecl
 

@@ -1,16 +1,18 @@
 module Lib
   ( engine,
+    report,
   )
 where
 
+import Control.Monad (forM)
+import Match.Unify (search)
 import Model.CType
 import Model.Query
-import Match.Unify (search)
 import QueryParser.Lexer (tokenize)
 import QueryParser.Parser (parseCQuery)
 import System.Environment (getArgs)
 import Text.Parsec
-import Control.Monad (forM)
+
 -- import Control.Deepseq
 
 loadIndex :: String -> IO CIndex
@@ -32,10 +34,11 @@ repl index = do
       let query = report $ parse parseCQuery "" $ tokenize line
       let matches = search query index
 
-      if length matches == 0 then 
-        putStrLn "No matches found"
-      else 
-        forM matches (putStrLn . prettyPrint) >> return ()
+      if length matches == 0
+        then
+          putStrLn "No matches found"
+        else
+          forM matches (putStrLn . prettyPrint) >> return ()
       repl index
     else
       return ()
