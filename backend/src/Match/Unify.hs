@@ -5,6 +5,7 @@ import Data.Bifunctor
 import Data.List (permutations)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Debug.Trace
 import Model.CType
 import Model.Query
 
@@ -66,12 +67,13 @@ unifyArgs = undefined
 unifyDecls CDeclType {template_args, arguments, result} CDeclType {template_args = template_args', arguments = arguments', result = result'} = do
   args_unificator <- unifyTypes arguments arguments'
   let target_result = replace result args_unificator
-  let query_result = replace result args_unificator
-  if compatibleWithT target_result query_result
+  -- let query_result = replace result args_unificator
+  -- trace (show args_unificator ++ " - " ++ show target_result ++ " - " ++ show result') $
+  if compatibleWithT target_result result'
     then
-      Nothing
-    else
       Just args_unificator
+    else
+      Nothing
 
 unify :: CQuery -> CDecl -> Maybe CMatch
 unify q@CQuery {target = CDeclType {template_args, arguments, result}} d@CDecl {name, ctype, location} =
@@ -83,4 +85,4 @@ unify q@CQuery {target = CDeclType {template_args, arguments, result}} d@CDecl {
     getFirst (Nothing : rest) = getFirst rest
 
 search :: CQuery -> CIndex -> [CMatch]
-search query = Data.Maybe.mapMaybe (unify query) 
+search query = Data.Maybe.mapMaybe (unify query)
