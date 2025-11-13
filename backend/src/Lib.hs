@@ -46,7 +46,6 @@ engine = do
   case args of
     (index_file : _) -> do
       index <- loadIndex index_file
-      `deepseq`
       putStrLn $ show (length index) ++ " lines parsed"
       repl index
     [] -> putStrLn $ "Usage: <app> <path-to-index>"
