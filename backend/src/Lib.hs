@@ -39,6 +39,7 @@ repl index = do
           putStrLn "No matches found"
         else
           forM matches (putStrLn . prettyPrint) >> return ()
+      putStrLn ""
       repl index
     else
       return ()

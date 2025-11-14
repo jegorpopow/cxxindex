@@ -59,13 +59,13 @@ struct std::formatter<hs::type>: null_format_parser {
       format_to(ctx.out(), "{} (", s);
     };
 
-    if (t->isLValueReferenceType()) { wrap("CTLRef"); }
-    if (t->isRValueReferenceType()) { wrap("CTRRef"); }
+    //if (t->isLValueReferenceType()) { wrap("CTLRef"); }
+    //if (t->isRValueReferenceType()) { wrap("CTRRef"); }
     t = t.getNonReferenceType();
 
   peel:
-    if (t.isLocalConstQualified()) { wrap("CTConst"); }
-    if (t.isLocalVolatileQualified()) { wrap("CTVolatile"); }
+    //if (t.isLocalConstQualified()) { wrap("CTConst"); }
+    //if (t.isLocalVolatileQualified()) { wrap("CTVolatile"); }
     t.removeLocalFastQualifiers();
 
     if (t->isPointerType()) {
@@ -75,7 +75,9 @@ struct std::formatter<hs::type>: null_format_parser {
     }
 
     // Don't handle template type applications, just pass them as qualified name
-    format_to(ctx.out(), "CTName {}", hs::quoted_string_view(t.getAsString()));
+    std::string name = t.getAsString();
+    if (name == "_Bool") { name = "bool"; }
+    format_to(ctx.out(), "CTName {}", hs::quoted_string_view(name));
     while (parens-- > 0) { *ctx.out()++ = ')'; }
     return ctx.out();
   }
@@ -121,20 +123,29 @@ struct ast_visitor:
   bool TraverseFunctionDecl(clang::FunctionDecl* f) {
     if (f->isFirstDecl() && !f->isDependentContext()) {
       using namespace std::views;
+
+      auto args = iota(0, int(f->getNumParams())) | transform([&](int i) {
+        return hs::type(f->getParamDecl(i)->getType());
+      });
+
+      std::string location = f->getLocation().printToString(compiler.getSourceManager());
+      int include_pos = location.find("/include/");
+      if (include_pos != -1) {
+        location = location.substr(include_pos + 9);
+      }
+
       std::println(
-      "CDecl {{"
-        "name = {},"
-        "ctype = CDeclType {{"
-          "template_args = [], arguments = {}, result = {}"
-        "}},"
-        "location = {}"
-      "}}",
+        "CDecl {{"
+          "name = {},"
+          "ctype = CDeclType {{"
+            "template_args = [], arguments = {}, result = {}"
+          "}},"
+          "location = {}"
+        "}}",
         hs::quoted_string_view(f->getQualifiedNameAsString()),
-        iota(0, int(f->getNumParams())) | transform([&](int i) {
-          return hs::type(f->getParamDecl(i)->getType().getCanonicalType());
-        }),
-        hs::type(f->getReturnType().getCanonicalType()),
-        hs::quoted_string_view(f->getLocation().printToString(compiler.getSourceManager())));
+        args,
+        hs::type(f->getReturnType()),
+        hs::quoted_string_view(location));
     }
     return base_visitor::TraverseFunctionDecl(f);
   }
